@@ -8,7 +8,7 @@
 struct Point {
     int x, y;
 	Point() : Point(0, 0) {}
-	Point(float x, float y) : x(x), y(y) {}
+	Point(int x, int y) : x(x), y(y) {}
 	bool operator==(const Point& rhs) const {
 		return x == rhs.x && y == rhs.y;
 	}
@@ -37,12 +37,26 @@ void read_board(std::ifstream& fin) {
     }
 }
 
-void write_valid_spot(Point out, std::ofstream& fout) {
-    fout << out.x << " " << out.y << std::endl;
-    fout.flush();
+void read_valid_spots(std::ifstream& fin) {
+    int n_valid_spots;
+    fin >> n_valid_spots;
+    int x, y;
+    for (int i = 0; i < n_valid_spots; i++) {
+        fin >> x >> y;
+        next_valid_spots.push_back({x, y});
+    }
 }
 
-
+void write_valid_spot(std::ofstream& fout) {
+    int n_valid_spots = next_valid_spots.size();
+    srand(time(NULL));
+    // Choose random spot. (Not random uniform here)
+    int index = (rand() % n_valid_spots);
+    Point p = next_valid_spots[index];
+    // Remember to flush the output to ensure the last action is written to file.
+    fout << p.x << " " << p.y << std::endl;
+    fout.flush();
+}
 class OthelloBoard {
 public:
     enum SPOT_STATE {
@@ -122,7 +136,7 @@ private:
         }
     }
 public:
-    /*OthelloBoard(std::array<std::array<int, SIZE>, SIZE> new_board, int player) {
+    OthelloBoard(std::array<std::array<int, SIZE>, SIZE> new_board, int player) {
          board = new_board;
          cur_player = player;
          next_valid_spots = get_valid_spots();
@@ -132,25 +146,6 @@ public:
                 disc_count[board[i][q]]++;
             }
          }
-    }*/
-    OthelloBoard() {
-        reset();
-    }
-    void reset() {
-        for (int i = 0; i < SIZE; i++) {
-            for (int j = 0; j < SIZE; j++) {
-                board[i][j] = EMPTY;
-            }
-        }
-        board[3][4] = board[4][3] = BLACK;
-        board[3][3] = board[4][4] = WHITE;
-        cur_player = BLACK;
-        disc_count[EMPTY] = 8*8-4;
-        disc_count[BLACK] = 2;
-        disc_count[WHITE] = 2;
-        next_valid_spots = get_valid_spots();
-        done = false;
-        winner = -1;
     }
     std::vector<Point> get_valid_spots() const {
         std::vector<Point> valid_spots;
@@ -190,47 +185,8 @@ public:
         return true;
     }
 };
-
-int player;
-const int SIZE = 8;
-std::array<std::array<int, SIZE>, SIZE> board;
-std::vector<Point> next_valid_spots;
-
-void read_board(std::ifstream& fin) {
-    fin >> player;
-    for (int i = 0; i < SIZE; i++) {
-        for (int j = 0; j < SIZE; j++) {
-            fin >> board[i][j];
-        }
-    }
-}
-
-void read_valid_spots(std::ifstream& fin) {
-    int n_valid_spots;
-    fin >> n_valid_spots;
-    int x, y;
-    for (int i = 0; i < n_valid_spots; i++) {
-        fin >> x >> y;
-        next_valid_spots.push_back({x, y});
-    }
-}
-
-void write_valid_spot(std::ofstream& fout) {    //write valid spot to action file
-    int n_valid_spots = next_valid_spots.size();
-    srand(time(NULL));
-    // Choose random spot. (Not random uniform here)
-    int index = (rand() % n_valid_spots);
-    Point p = next_valid_spots[index];
-    // Remember to flush the output to ensure the last action is written to file.
-    fout << p.x << " " << p.y << std::endl;
-    fout.flush();
-}
-int statevalue(){
-    
-}
-int alphabeta(){
-
-}
+int value();
+int alphabeta();
 int main(int, char** argv) {
     std::ifstream fin(argv[1]);
     std::ofstream fout(argv[2]);

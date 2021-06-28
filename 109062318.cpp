@@ -185,14 +185,66 @@ public:
         return true;
     }
 };
-int value();
-int alphabeta();
+
+int value(OthelloBoard now,int player){
+    int i,j,k;
+    int mytile=0,opptile=0;
+
+    //棋子數量
+    for(i=0;i<8;i++){
+        for(j=0;j<8;j++){
+            if(now.board[i][j] == player){
+                mytile++;
+            }else if(now.board[i][j] == 3-player){
+                opptile++;
+            }
+        }
+    }
+    std::cout<<"mytile="<<mytile<<",opptile="<<opptile<<"\n";
+}
+//maxdepth(=5)可以寫在if中，就不需要當作參數傳入了
+int alphabeta(OthelloBoard now,int depth/*,int maxdepth*/,int alpha,int beta,bool minmax){
+    int i;
+    if(depth==5){
+        return value(now,player);
+    }
+    if(minmax){ //on player node
+        int nowval=-1e9;
+        for(i=0;i < now.next_valid_spots.size();i++){
+            OthelloBoard next = now;
+            next.put_disc(next_valid_spots[i]);
+            nowval = std::max(nowval , alphabeta(next,depth+1,alpha,beta,!minmax/*false*/));
+            alpha = std::max(alpha , nowval);
+            if(alpha>=beta){
+                break;
+            }
+        }
+        return nowval;
+    }else{  //on opponent node
+        int nowval=1e9;
+        for(i=0;i < now.next_valid_spots.size();i++){
+            OthelloBoard next = now;
+            next.put_disc(next_valid_spots[i]);
+            nowval = std::min(nowval , alphabeta(next,depth+1,alpha,beta,!minmax/*true*/));
+            beta = std::min(beta , nowval);
+            if(alpha>=beta){
+                break;
+            }
+        }
+        return nowval;
+    }
+}
+
 int main(int, char** argv) {
     std::ifstream fin(argv[1]);
     std::ofstream fout(argv[2]);
     read_board(fin);
+
+    OthelloBoard now(board,player);
+
     read_valid_spots(fin);
     write_valid_spot(fout);
+    alphabeta(now,0,-1e9,1e9,true);
     fin.close();
     fout.close();
     return 0;

@@ -47,12 +47,14 @@ void read_valid_spots(std::ifstream& fin) {
     }
 }
 
-void write_valid_spot(std::ofstream& fout) {
-    int n_valid_spots = next_valid_spots.size();
+void write_valid_spot(Point p,std::ofstream& fout) {
+    /*int n_valid_spots = next_valid_spots.size();
     srand(time(NULL));
     // Choose random spot. (Not random uniform here)
     int index = (rand() % n_valid_spots);
-    Point p = next_valid_spots[index];
+    Point p = next_valid_spots[index];*/
+
+    
     // Remember to flush the output to ensure the last action is written to file.
     fout << p.x << " " << p.y << std::endl;
     fout.flush();
@@ -201,16 +203,15 @@ int value(OthelloBoard now,int player){
             }
         }
     }
-    heuristic += 10*(mytile-opptile);
-    //std::cout<<"mytile="<<mytile<<",opptile="<<opptile<<"\n";
+    heuristic += (mytile-opptile);
 
     //角落
     Point corner[4]={Point(0,0),Point(0,7),Point(7,0),Point(7,7)};
     for(auto p:corner){
         if(now.board[p.x][p.y]==player){
-            heuristic+=1e4;
+            heuristic+=10;
         }else if(now.board[p.x][p.y]==3-player){
-            heuristic-=1e4;
+            heuristic-=10;
         }
     }
 
@@ -218,57 +219,84 @@ int value(OthelloBoard now,int player){
     Point bad[4]={Point(1,1),Point(1,6),Point(6,1),Point(6,6)};
     for(auto p:bad){
         if(now.board[p.x][p.y]==player){
-            heuristic-=1e4;
+            heuristic-=5;
         }else if(now.board[p.x][p.y]==3-player){
-            heuristic+=1e4;
+            heuristic+=5;
         }
     }
-    //std::cout<<"heuristic="<<heuristic<<"\n";
+
+    //跟角落相鄰的點
+    Point next_to_corner[8]={Point(0,1),Point(1,0),
+                            Point(0,6),Point(1,7),
+                            Point(6,0),Point(7,1),
+                            Point(6,7),Point(7,6)};
+    for(auto p:next_to_corner){
+        if(now.board[p.x][p.y]==player){
+            heuristic-=2;
+        }else if(now.board[p.x][p.y]==3-player){
+            heuristic+=2;
+        }
+    }
     return heuristic;
 }
 //maxdepth(=5)可以寫在if中，就不需要當作參數傳入了
-int alphabeta(OthelloBoard now,int depth/*,int maxdepth*/,int alpha,int beta,bool minmax){
+int alphabeta(OthelloBoard now,int depth,int alpha,int beta,bool minmax,std::ofstream& fout){
     int i;
-    if(depth==5){
+    int nowval,abval,choose_idx;
+
+    if(depth==5 || now.done){
         return value(now,player);
     }
     if(minmax){ //on player node
-        int nowval=-1e9;
+        nowval=-1e9;
         for(i=0;i < (int)now.next_valid_spots.size();i++){
             OthelloBoard next = now;
             next.put_disc(now.next_valid_spots[i]);
-            nowval = std::max(nowval , alphabeta(next,depth+1,alpha,beta,false/*!minmax*/));
+            abval = alphabeta(next , depth+1 , alpha , beta , false , fout);
+            nowval = std::max(nowval , abval);
             alpha = std::max(alpha , nowval);
+
+            if(nowval==abval){
+                choose_idx=i;
+            }
             if(alpha>=beta){
                 break;
             }
         }
-        return nowval;
     }else{  //on opponent node
-        int nowval=1e9;
+        nowval=1e9;
         for(i=0;i < (int)now.next_valid_spots.size();i++){
             OthelloBoard next = now;
             next.put_disc(now.next_valid_spots[i]);
-            nowval = std::min(nowval , alphabeta(next,depth+1,alpha,beta,true/*!minmax*/));
+            abval = alphabeta(next , depth+1 , alpha , beta , true , fout);
+            nowval = std::min(nowval , abval);
             beta = std::min(beta , nowval);
             if(alpha>=beta){
                 break;
             }
         }
-        return nowval;
+        
     }
+    if(depth == 0){
+        /*int x=now.next_valid_spots[choose_idx].x;
+        int y=now.next_valid_spots[choose_idx].y;
+        std::cout<<"gonna put "<<"("<<x<<","<<y<<")\n";*/
+        write_valid_spot(now.next_valid_spots[choose_idx], fout);
+    }
+    return nowval;
 }
 
 int main(int, char** argv) {
+    srand(time(NULL));
     std::ifstream fin(argv[1]);
     std::ofstream fout(argv[2]);
     read_board(fin);
     read_valid_spots(fin);
 
     OthelloBoard now(board,player);
-    alphabeta(now,0,-1e9,1e9,true);
+    alphabeta(now,0,-1e9,1e9,true,fout);
     
-    write_valid_spot(fout);
+    //write_valid_spot(fout);
     fin.close();
     fout.close();
     return 0;

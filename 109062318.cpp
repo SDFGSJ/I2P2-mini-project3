@@ -187,7 +187,8 @@ public:
 };
 
 int value(OthelloBoard now,int player){
-    int i,j,k;
+    int i,j;
+    int heuristic=0;
     int mytile=0,opptile=0;
 
     //棋子數量
@@ -200,7 +201,30 @@ int value(OthelloBoard now,int player){
             }
         }
     }
-    std::cout<<"mytile="<<mytile<<",opptile="<<opptile<<"\n";
+    heuristic += 10*(mytile-opptile);
+    //std::cout<<"mytile="<<mytile<<",opptile="<<opptile<<"\n";
+
+    //角落
+    Point corner[4]={Point(0,0),Point(0,7),Point(7,0),Point(7,7)};
+    for(auto p:corner){
+        if(now.board[p.x][p.y]==player){
+            heuristic+=1e4;
+        }else if(now.board[p.x][p.y]==3-player){
+            heuristic-=1e4;
+        }
+    }
+
+    //角落旁的點
+    Point bad[4]={Point(1,1),Point(1,6),Point(6,1),Point(6,6)};
+    for(auto p:bad){
+        if(now.board[p.x][p.y]==player){
+            heuristic-=1e4;
+        }else if(now.board[p.x][p.y]==3-player){
+            heuristic+=1e4;
+        }
+    }
+    //std::cout<<"heuristic="<<heuristic<<"\n";
+    return heuristic;
 }
 //maxdepth(=5)可以寫在if中，就不需要當作參數傳入了
 int alphabeta(OthelloBoard now,int depth/*,int maxdepth*/,int alpha,int beta,bool minmax){
@@ -210,10 +234,10 @@ int alphabeta(OthelloBoard now,int depth/*,int maxdepth*/,int alpha,int beta,boo
     }
     if(minmax){ //on player node
         int nowval=-1e9;
-        for(i=0;i < now.next_valid_spots.size();i++){
+        for(i=0;i < (int)now.next_valid_spots.size();i++){
             OthelloBoard next = now;
-            next.put_disc(next_valid_spots[i]);
-            nowval = std::max(nowval , alphabeta(next,depth+1,alpha,beta,!minmax/*false*/));
+            next.put_disc(now.next_valid_spots[i]);
+            nowval = std::max(nowval , alphabeta(next,depth+1,alpha,beta,false/*!minmax*/));
             alpha = std::max(alpha , nowval);
             if(alpha>=beta){
                 break;
@@ -222,10 +246,10 @@ int alphabeta(OthelloBoard now,int depth/*,int maxdepth*/,int alpha,int beta,boo
         return nowval;
     }else{  //on opponent node
         int nowval=1e9;
-        for(i=0;i < now.next_valid_spots.size();i++){
+        for(i=0;i < (int)now.next_valid_spots.size();i++){
             OthelloBoard next = now;
-            next.put_disc(next_valid_spots[i]);
-            nowval = std::min(nowval , alphabeta(next,depth+1,alpha,beta,!minmax/*true*/));
+            next.put_disc(now.next_valid_spots[i]);
+            nowval = std::min(nowval , alphabeta(next,depth+1,alpha,beta,true/*!minmax*/));
             beta = std::min(beta , nowval);
             if(alpha>=beta){
                 break;
@@ -239,12 +263,12 @@ int main(int, char** argv) {
     std::ifstream fin(argv[1]);
     std::ofstream fout(argv[2]);
     read_board(fin);
+    read_valid_spots(fin);
 
     OthelloBoard now(board,player);
-
-    read_valid_spots(fin);
-    write_valid_spot(fout);
     alphabeta(now,0,-1e9,1e9,true);
+    
+    write_valid_spot(fout);
     fin.close();
     fout.close();
     return 0;

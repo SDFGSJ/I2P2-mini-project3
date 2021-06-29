@@ -189,54 +189,90 @@ public:
 };
 
 int value(OthelloBoard now,int player){
-    int i,j;
-    int heuristic=0;
+    srand(time(NULL));
+    int i,j,k;
+    //w:weight, c:corner, nc:near corner, o:open(mobility), a:available
+    int heuristic=0,w=0,c=0,nc=0,o=0,a=0;
     int mytile=0,opptile=0;
 
-    //棋子數量
+    int weight[8][8]={   
+        {500, -25,  10,   5,   5,  10, -25, 500},
+        {-25,-100,   1,   1,   1,   1,-100, -25},
+        {10 ,   1,   3,   2,   2,   3,   1,  10},
+        {5  ,   1,   2,   1,   1,   2,   1,   5},
+        {5  ,   1,   2,   1,   1,   2,   1,   5},
+        {10 ,   1,   3,   2,   2,   3,   1,  10},
+        {-25,-100,   1,   1,   1,   1,-100, -25},
+        {500, -25,  10,   5,   5,  10, -25, 500}
+    };
+    Point corner[4]={Point(0,0),Point(0,7),Point(7,0),Point(7,7)};
+    Point dir[8]={
+        Point(-1,-1), Point(-1,0), Point(-1,1),
+        Point(0, -1),              Point(0, 1),
+        Point(1, -1), Point(1, 0), Point(1, 1)
+    };
+
+    //棋子權重與開放度(機動性)
     for(i=0;i<8;i++){
         for(j=0;j<8;j++){
             if(now.board[i][j] == player){
-                mytile++;
+                w += weight[i][j];
+                for(k=0;k<8;k++){
+                    Point p = Point(i,j) + dir[k];
+                    if(0 <= p.x && p.x < SIZE && 0 <= p.y && p.y < SIZE && now.board[p.x][p.y] == 0){
+                        mytile++;
+                    }
+                }
             }else if(now.board[i][j] == 3-player){
-                opptile++;
+                w -= weight[i][j];
+                for(k=0;k<8;k++){
+                    Point p = Point(i,j) + dir[k];
+                    if(0 <= p.x && p.x < SIZE && 0 <= p.y && p.y < SIZE && now.board[p.x][p.y] == 0){
+                        opptile++;
+                    }
+                }
             }
         }
     }
-    heuristic += (mytile-opptile);
+    o = opptile - mytile;   //開放性越小對我越好
 
-    //角落
-    Point corner[4]={Point(0,0),Point(0,7),Point(7,0),Point(7,7)};
+    //角落跟角落周遭
+    mytile=opptile=0;
     for(auto p:corner){
         if(now.board[p.x][p.y]==player){
-            heuristic+=10;
+            mytile++;
         }else if(now.board[p.x][p.y]==3-player){
-            heuristic-=10;
+            opptile++;
+        }else{  //角落沒人占
+            for(k=0;k<8;k++){   //角落旁的點
+                Point p = Point(i,j) + dir[k];
+                if(0 <= p.x && p.x < SIZE && 0 <= p.y && p.y < SIZE){
+                    if(now.board[p.x][p.y] == player){
+                        nc--;
+                    }else if(now.board[p.x][p.y] == 3-player){
+                        nc++;
+                    }
+                }
+            }
         }
     }
+    c = mytile - opptile;
 
-    //角落旁的點
-    Point bad[4]={Point(1,1),Point(1,6),Point(6,1),Point(6,6)};
-    for(auto p:bad){
-        if(now.board[p.x][p.y]==player){
-            heuristic-=5;
-        }else if(now.board[p.x][p.y]==3-player){
-            heuristic+=5;
-        }
-    }
+    //自己能下的地方有幾個
+    mytile=opptile=0;
+    int originplayer = now.cur_player;
 
-    //跟角落相鄰的點
-    Point next_to_corner[8]={Point(0,1),Point(1,0),
-                            Point(0,6),Point(1,7),
-                            Point(6,0),Point(7,1),
-                            Point(6,7),Point(7,6)};
-    for(auto p:next_to_corner){
-        if(now.board[p.x][p.y]==player){
-            heuristic-=2;
-        }else if(now.board[p.x][p.y]==3-player){
-            heuristic+=2;
-        }
-    }
+    now.cur_player = player;
+	mytile = now.get_valid_spots().size();
+
+    now.cur_player = 3 - player;
+	opptile = now.get_valid_spots().size();
+
+    now.cur_player = originplayer;
+
+    a = mytile - opptile;
+
+    heuristic = 20 * w + 50 * o + 30 * nc + 100 * c + 70 * a;
     return heuristic;
 }
 //maxdepth(=5)可以寫在if中，就不需要當作參數傳入了

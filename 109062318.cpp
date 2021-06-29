@@ -272,7 +272,7 @@ int value(OthelloBoard now,int player){
 
     a = mytile - opptile;
 
-    heuristic = 20 * w + 50 * o + 30 * nc + 100 * c + 70 * a;
+    heuristic = 20 * w + 10 * o + 30 * nc + 100 * c + 70 * a;
     return heuristic;
 }
 //maxdepth(=5)可以寫在if中，就不需要當作參數傳入了
